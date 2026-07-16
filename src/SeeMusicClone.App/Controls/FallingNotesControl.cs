@@ -44,11 +44,11 @@ public sealed class FallingNotesControl : FrameworkElement
         set => SetValue(NoteSpeedProperty, value);
     }
 
-    private static readonly Color[] Palette =
-    {
-        Color.FromRgb(66, 165, 245), Color.FromRgb(102, 187, 106), Color.FromRgb(255, 167, 38),
-        Color.FromRgb(171, 71, 188), Color.FromRgb(239, 83, 80), Color.FromRgb(38, 198, 218)
-    };
+    private static readonly Color RightHandColor = Color.FromRgb(66, 165, 245);  // blue
+    private static readonly Color LeftHandColor = Color.FromRgb(255, 167, 38);   // orange
+
+    /// <summary>Notes at or above this MIDI note number are colored as right hand; below is left hand.</summary>
+    private const int HandSplitNoteNumber = 60; // Middle C (C4)
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -71,7 +71,7 @@ public sealed class FallingNotesControl : FrameworkElement
             if (bottomY < 0 || topY > height) continue; // off-screen, skip
             if (!keyByNote.TryGetValue(note.NoteNumber, out var key)) continue;
 
-            var color = Palette[note.Channel % Palette.Length];
+            var color = note.NoteNumber >= HandSplitNoteNumber ? RightHandColor : LeftHandColor;
             var noteBrush = new SolidColorBrush(color);
 
             double noteY = Math.Max(0, topY);
