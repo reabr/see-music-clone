@@ -6,56 +6,27 @@
         Background="#0F0F14">
     <DockPanel LastChildFill="True">
 
-        <Grid DockPanel.Dock="Top" Margin="10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <!-- Top toolbar -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="10" >
+            <Button Content="Open MIDI..." Command="{Binding OpenFileCommand}" Padding="10,5" Margin="0,0,8,0"/>
+            <Button Content="{Binding IsPlaying, Converter={x:Null}, FallbackValue=Play}"
+                    Command="{Binding PlayPauseCommand}" Padding="10,5" Margin="0,0,8,0" Width="70"/>
+            <Button Content="Stop" Command="{Binding StopCommand}" Padding="10,5" Margin="0,0,20,0"/>
 
-            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
-                <Button Content="Open MIDI..." Command="{Binding OpenFileCommand}" Padding="10,5" Margin="0,0,8,0"/>
-                <Button Content="{Binding PlayPauseText}" Command="{Binding PlayPauseCommand}" Padding="10,5" Margin="0,0,8,0" Width="70"/>
-                <Button Content="Stop" Command="{Binding StopCommand}" Padding="10,5" Margin="0,0,20,0"/>
-            </StackPanel>
+            <TextBlock Text="Note Speed:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <Slider x:Name="NoteSpeedSlider" Minimum="80" Maximum="600" Width="180"
+                    Value="{Binding NoteSpeed}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBlock Text="{Binding NoteSpeed, StringFormat={}{0:0} px/s}" Foreground="White"
+                       VerticalAlignment="Center" Width="70" Margin="0,0,20,0"/>
 
-            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
-                <TextBlock Text="Note Speed:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <Slider Minimum="80" Maximum="800" Width="180"
-                        Value="{Binding NoteSpeed, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBlock Text="{Binding NoteSpeed, StringFormat={}{0:0} px/s}" Foreground="White"
-                           VerticalAlignment="Center" Width="76" Margin="0,0,20,0"/>
+            <TextBlock Text="Playback Speed:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <Slider Minimum="0.25" Maximum="2.0" Width="140" Value="{Binding PlaybackSpeed}"
+                    VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBlock Text="{Binding PlaybackSpeed, StringFormat={}{0:0.00}x}" Foreground="White"
+                       VerticalAlignment="Center" Width="50" Margin="0,0,20,0"/>
 
-                <TextBlock Text="Playback:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <Slider Minimum="0.25" Maximum="2.0" Width="140"
-                        Value="{Binding PlaybackSpeed, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBlock Text="{Binding PlaybackSpeed, StringFormat={}{0:0.00}x}" Foreground="White"
-                           VerticalAlignment="Center" Width="50"/>
-            </StackPanel>
-
-            <Button Grid.Row="0" Grid.Column="2" Content="Batch Render..." Command="{Binding OpenBatchRenderCommand}"
-                    Padding="10,5"/>
-
-            <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="0,10,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="52"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="64"/>
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Column="0" Text="{Binding CurrentTime, StringFormat={}{0:0.0}s}" Foreground="#CCCCCC"
-                           VerticalAlignment="Center"/>
-                <Slider Grid.Column="1" Minimum="0" Maximum="{Binding DurationSeconds}"
-                        Value="{Binding CurrentTime, UpdateSourceTrigger=PropertyChanged}"
-                        IsEnabled="{Binding HasSong}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="{Binding DurationSeconds, StringFormat={}{0:0.0}s}" Foreground="#CCCCCC"
-                           TextAlignment="Right" VerticalAlignment="Center"/>
-            </Grid>
-        </Grid>
+            <Button Content="Batch Render..." Command="{Binding OpenBatchRenderCommand}" Padding="10,5"/>
+        </StackPanel>
 
         <!-- Status bar -->
         <TextBlock DockPanel.Dock="Bottom" Text="{Binding StatusText}" Foreground="#AAAAAA"

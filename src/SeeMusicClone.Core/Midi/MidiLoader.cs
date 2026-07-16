@@ -1,12 +1,11 @@
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
 using SeeMusicClone.Core.Models;
-using NoteEvent = SeeMusicClone.Core.Models.NoteEvent;
 
 namespace SeeMusicClone.Core.Midi;
 
 /// <summary>
-/// Loads a .mid/.midi file and flattens it into a list of absolute-time NoteEvents,
+/// Loads a .mid/.midi file and flattens it into a list of absolute-time PianoNotes,
 /// filtered to the 88-key piano range.
 /// </summary>
 public static class MidiLoader
@@ -16,7 +15,7 @@ public static class MidiLoader
         var midiFile = MidiFile.Read(filePath);
         var tempoMap = midiFile.GetTempoMap();
 
-        var notes = new List<NoteEvent>();
+        var notes = new List<PianoNote>();
         double maxEnd = 0;
 
         foreach (var note in midiFile.GetNotes())
@@ -25,12 +24,12 @@ public static class MidiLoader
                 continue; // outside 88-key range, ignore for the visualization
 
             var startMetric = note.TimeAs<MetricTimeSpan>(tempoMap);
-            var endMetric = note.EndTimeAs<MetricTimeSpan>(tempoMap);
+            var endMetric = TimeConverter.ConvertTo<MetricTimeSpan>(note.Time + note.Length, tempoMap);
 
             var start = startMetric.TotalMicroseconds / 1_000_000.0;
             var end = endMetric.TotalMicroseconds / 1_000_000.0;
 
-            notes.Add(new NoteEvent
+            notes.Add(new PianoNote
             {
                 NoteNumber = note.NoteNumber,
                 StartTimeSeconds = start,

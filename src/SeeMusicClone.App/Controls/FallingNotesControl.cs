@@ -14,8 +14,8 @@ namespace SeeMusicClone.App.Controls;
 public sealed class FallingNotesControl : FrameworkElement
 {
     public static readonly DependencyProperty NotesProperty = DependencyProperty.Register(
-        nameof(Notes), typeof(IReadOnlyList<NoteEvent>), typeof(FallingNotesControl),
-        new FrameworkPropertyMetadata(Array.Empty<NoteEvent>(), FrameworkPropertyMetadataOptions.AffectsRender));
+        nameof(Notes), typeof(IReadOnlyList<PianoNote>), typeof(FallingNotesControl),
+        new FrameworkPropertyMetadata(Array.Empty<PianoNote>(), FrameworkPropertyMetadataOptions.AffectsRender));
 
     public static readonly DependencyProperty CurrentTimeProperty = DependencyProperty.Register(
         nameof(CurrentTime), typeof(double), typeof(FallingNotesControl),
@@ -23,11 +23,11 @@ public sealed class FallingNotesControl : FrameworkElement
 
     public static readonly DependencyProperty NoteSpeedProperty = DependencyProperty.Register(
         nameof(NoteSpeed), typeof(double), typeof(FallingNotesControl),
-        new FrameworkPropertyMetadata(220.0, FrameworkPropertyMetadataOptions.AffectsRender));
+        new FrameworkPropertyMetadata(140.0, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    public IReadOnlyList<NoteEvent> Notes
+    public IReadOnlyList<PianoNote> Notes
     {
-        get => (IReadOnlyList<NoteEvent>)GetValue(NotesProperty);
+        get => (IReadOnlyList<PianoNote>)GetValue(NotesProperty);
         set => SetValue(NotesProperty, value);
     }
 
@@ -50,63 +50,60 @@ public sealed class FallingNotesControl : FrameworkElement
         Color.FromRgb(171, 71, 188), Color.FromRgb(239, 83, 80), Color.FromRgb(38, 198, 218)
     };
 
-    private static readonly Brush BackgroundBrush = new LinearGradientBrush(
-        Color.FromRgb(14, 14, 20),
-        Color.FromRgb(25, 25, 34),
-        90);
-
-    private static readonly Pen KeyGuidePen = new(new SolidColorBrush(Color.FromArgb(38, 255, 255, 255)), 1);
-    private static readonly Pen OctaveGuidePen = new(new SolidColorBrush(Color.FromArgb(72, 255, 255, 255)), 1);
-    private static readonly Pen HitLinePen = new(new SolidColorBrush(Color.FromRgb(185, 210, 230)), 2);
-
-    static FallingNotesControl()
-    {
-        BackgroundBrush.Freeze();
-        KeyGuidePen.Freeze();
-        OctaveGuidePen.Freeze();
-        HitLinePen.Freeze();
-    }
-
     protected override void OnRender(DrawingContext dc)
     {
         double width = ActualWidth;
         double height = ActualHeight; // this control sits directly above the keyboard control
         if (width <= 0 || height <= 0) return;
 
-        dc.DrawRectangle(BackgroundBrush, null, new Rect(0, 0, width, height));
+        dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(18, 18, 24)), null, new Rect(0, 0, width, height));
 
         var keys = PianoLayout.Compute(width, height); // reuse same key x/width geometry
         var keyByNote = keys.ToDictionary(k => k.NoteNumber);
-
-        foreach (var key in keys.Where(k => !k.IsBlack))
-        {
-            var pen = key.NoteNumber % 12 == 0 ? OctaveGuidePen : KeyGuidePen;
-            dc.DrawLine(pen, new Point(key.X, 0), new Point(key.X, height));
-        }
 
         foreach (var note in Notes)
         {
             double secondsUntilHit = note.StartTimeSeconds - CurrentTime;
             double bottomY = height - secondsUntilHit * NoteSpeed;
-            double noteHeightPx = note.DurationSeconds * NoteSpeed;
-            double topY = bottomY - noteHeightPx;
+            double fullHeightPx = note.DurationSeconds * NoteSpeed;
+            double topY = bottomY - fullHeightPx;
 
             if (bottomY < 0 || topY > height) continue; // off-screen, skip
             if (!keyByNote.TryGetValue(note.NoteNumber, out var key)) continue;
 
-            var brush = new SolidColorBrush(Palette[note.Channel % Palette.Length])
+            var color = Palette[note.Channel % Palette.Length];
+            var headBrush = new SolidColorBrush(color);
+
+            double headHeightPx = Math.Min(fullHeightPx, NoteRenderStyle.MaxHeadSeconds * NoteSpeed);
+            double headTopY = bottomY - headHeightPx;
+
+            // Long note: draw a thin, dimmer sustain tail above the head first (so the head paints over it),
+            // instead of one giant block that would dwarf everything else on screen.
+            if (fullHeightPx > headHeightPx)
             {
-                Opacity = 0.45 + Math.Clamp(note.Velocity, 1, 127) / 127.0 * 0.55
-            };
-            var rect = new Rect(
+                var tailColor = Color.FromArgb((byte)(255 * NoteRenderStyle.TailOpacity), color.R, color.G, color.B);
+                var tailBrush = new SolidColorBrush(tailColor);
+                double tailWidth = Math.Max(1, key.Width * NoteRenderStyle.TailWidthFraction);
+                double tailX = key.X + (key.Width - tailWidth) / 2;
+
+                var tailRect = new Rect(
+                    tailX,
+                    Math.Max(0, topY),
+                    tailWidth,
+                    Math.Min(height, headTopY) - Math.Max(0, topY));
+
+                if (tailRect.Height > 0)
+                    dc.DrawRoundedRectangle(tailBrush, null, tailRect, 2, 2);
+            }
+
+            var headRect = new Rect(
                 key.X + 1,
-                Math.Max(0, topY),
+                Math.Max(0, headTopY),
                 Math.Max(1, key.Width - 2),
-                Math.Min(height, bottomY) - Math.Max(0, topY));
+                Math.Min(height, bottomY) - Math.Max(0, headTopY));
 
-            dc.DrawRoundedRectangle(brush, null, rect, 3, 3);
+            if (headRect.Height > 0)
+                dc.DrawRoundedRectangle(headBrush, null, headRect, 3, 3);
         }
-
-        dc.DrawLine(HitLinePen, new Point(0, height - 1), new Point(width, height - 1));
     }
 }

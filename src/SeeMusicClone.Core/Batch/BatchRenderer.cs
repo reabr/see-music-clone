@@ -66,81 +66,49 @@ public sealed class BatchRenderer
         var psi = new ProcessStartInfo
         {
             FileName = ffmpegExe,
+            Arguments =
+                $"-y -f rawvideo -pixel_format bgra -video_size {options.Width}x{options.Height} " +
+                $"-framerate {options.Fps} -i - -an -c:v libx264 -pix_fmt yuv420p \"{outputPath}\"",
             RedirectStandardInput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
 
-        foreach (var argument in new[]
-        {
-            "-y",
-            "-f", "rawvideo",
-            "-pixel_format", "bgra",
-            "-video_size", $"{options.Width}x{options.Height}",
-            "-framerate", options.Fps.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            "-i", "-",
-            "-an",
-            "-c:v", "libx264",
-            "-pix_fmt", "yuv420p",
-            outputPath
-        })
-        {
-            psi.ArgumentList.Add(argument);
-        }
-
         using var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Could not start ffmpeg. Check that it is installed and on PATH, or set BatchRenderOptions.FfmpegPath.");
 
         // Drain stderr so ffmpeg doesn't block on a full pipe buffer.
-        var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        _ = Task.Run(() => process.StandardError.ReadToEndAsync(), cancellationToken);
 
         int totalFrames = (int)Math.Ceiling(song.DurationSeconds * options.Fps);
         totalFrames = Math.Max(totalFrames, 1);
 
-        try
+        using (var stdin = process.StandardInput.BaseStream)
         {
-            using (var stdin = process.StandardInput.BaseStream)
+            for (int frame = 0; frame < totalFrames; frame++)
             {
-                for (int frame = 0; frame < totalFrames; frame++)
+                cancellationToken.ThrowIfCancellationRequested();
+
+                double t = frame / (double)options.Fps;
+                byte[] pixels = renderer.RenderFrame(song.Notes, t);
+                await stdin.WriteAsync(pixels, cancellationToken);
+
+                if (frame % 5 == 0 || frame == totalFrames - 1)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    double t = frame / (double)options.Fps;
-                    byte[] pixels = renderer.RenderFrame(song.Notes, t);
-                    await stdin.WriteAsync(pixels, cancellationToken);
-
-                    if (frame % 5 == 0 || frame == totalFrames - 1)
+                    progress.Report(new BatchRenderProgress
                     {
-                        progress.Report(new BatchRenderProgress
-                        {
-                            FileName = song.FileName,
-                            FileIndex = fileIndex,
-                            TotalFiles = totalFiles,
-                            FractionComplete = (frame + 1) / (double)totalFrames,
-                            IsFileComplete = false
-                        });
-                    }
+                        FileName = song.FileName,
+                        FileIndex = fileIndex,
+                        TotalFiles = totalFiles,
+                        FractionComplete = (frame + 1) / (double)totalFrames,
+                        IsFileComplete = false
+                    });
                 }
             }
-
-            await process.WaitForExitAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            if (!process.HasExited)
-                process.Kill(entireProcessTree: true);
-            throw;
-        }
-        catch
-        {
-            if (!process.HasExited)
-                process.Kill(entireProcessTree: true);
-            throw;
         }
 
-        var stderr = await stderrTask;
-        var errorMessage = process.ExitCode == 0 ? null : BuildFfmpegError(process.ExitCode, stderr);
+        await process.WaitForExitAsync(cancellationToken);
 
         progress.Report(new BatchRenderProgress
         {
@@ -149,18 +117,7 @@ public sealed class BatchRenderer
             TotalFiles = totalFiles,
             FractionComplete = 1.0,
             IsFileComplete = true,
-            ErrorMessage = errorMessage
+            ErrorMessage = process.ExitCode != 0 ? $"ffmpeg exited with code {process.ExitCode}" : null
         });
-    }
-
-    private static string BuildFfmpegError(int exitCode, string stderr)
-    {
-        var lines = stderr
-            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-            .TakeLast(4);
-        var detail = string.Join(" ", lines);
-        return string.IsNullOrWhiteSpace(detail)
-            ? $"ffmpeg exited with code {exitCode}"
-            : $"ffmpeg exited with code {exitCode}: {detail}";
     }
 }

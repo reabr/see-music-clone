@@ -6,7 +6,7 @@ public sealed class MidiSong
 
     public string FileName => Path.GetFileName(FilePath);
 
-    public IReadOnlyList<NoteEvent> Notes { get; init; } = Array.Empty<NoteEvent>();
+    public IReadOnlyList<PianoNote> Notes { get; init; } = Array.Empty<PianoNote>();
 
     public double DurationSeconds { get; init; }
 }
