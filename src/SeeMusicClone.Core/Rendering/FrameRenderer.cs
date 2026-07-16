@@ -11,10 +11,14 @@ public sealed class FrameRenderer
     public double KeyboardHeight { get; set; }
 
     private static readonly SKColor BackgroundColor = new(18, 18, 24);
+    private static readonly SKColor KeyGuideColor = new(255, 255, 255, 34);
+    private static readonly SKColor OctaveGuideColor = new(255, 255, 255, 68);
+    private static readonly SKColor HitLineColor = new(185, 210, 230);
     private static readonly SKColor WhiteKeyColor = new(250, 250, 250);
     private static readonly SKColor BlackKeyColor = new(20, 20, 20);
     private static readonly SKColor WhiteKeyActiveColor = new(120, 200, 255);
     private static readonly SKColor BlackKeyActiveColor = new(60, 140, 220);
+    private static readonly SKColor KeyLabelColor = new(72, 72, 72);
 
     private static readonly SKColor[] NotePalette =
     {
@@ -44,6 +48,13 @@ public sealed class FrameRenderer
 
         using (var paint = new SKPaint { IsAntialias = true })
         {
+            foreach (var key in keys.Where(k => !k.IsBlack))
+            {
+                paint.Color = key.NoteNumber % 12 == 0 ? OctaveGuideColor : KeyGuideColor;
+                paint.StrokeWidth = 1;
+                canvas.DrawLine((float)key.X, 0, (float)key.X, (float)fallAreaHeight, paint);
+            }
+
             // Falling notes: a note reaches the keyboard (y = fallAreaHeight) exactly at its StartTime.
             foreach (var note in notes)
             {
@@ -58,7 +69,8 @@ public sealed class FrameRenderer
                 if (timeSeconds >= note.StartTimeSeconds && timeSeconds <= note.EndTimeSeconds)
                     activeNotes.Add(note.NoteNumber);
 
-                paint.Color = NotePalette[note.Channel % NotePalette.Length];
+                var color = NotePalette[note.Channel % NotePalette.Length];
+                paint.Color = color.WithAlpha((byte)(115 + Math.Clamp(note.Velocity, 1, 127) / 127.0 * 140));
                 var rect = new SKRect(
                     (float)(key.X + 1),
                     (float)Math.Max(0, noteTopY),
@@ -66,6 +78,11 @@ public sealed class FrameRenderer
                     (float)Math.Min(fallAreaHeight, noteBottomY));
                 canvas.DrawRoundRect(rect, 4, 4, paint);
             }
+
+            paint.Color = HitLineColor;
+            paint.StrokeWidth = 2;
+            canvas.DrawLine(0, (float)(fallAreaHeight - 1), Width, (float)(fallAreaHeight - 1), paint);
+            paint.StrokeWidth = 1;
 
             // Keyboard: white keys first, then black keys on top.
             double keyboardTop = fallAreaHeight;
@@ -78,6 +95,22 @@ public sealed class FrameRenderer
                 paint.Style = SKPaintStyle.Stroke;
                 canvas.DrawRect(new SKRect((float)key.X, (float)keyboardTop, (float)(key.X + key.Width - 1), (float)Height), paint);
                 paint.Style = SKPaintStyle.Fill;
+
+                if (key.NoteNumber % 12 == 0 || key.NoteNumber == PianoLayoutHelper.LowestNote)
+                {
+                    var label = key.NoteNumber == PianoLayoutHelper.LowestNote
+                        ? "A0"
+                        : $"C{key.NoteNumber / 12 - 1}";
+                    paint.Color = KeyLabelColor;
+                    paint.TextSize = 16;
+                    paint.Typeface = SKTypeface.FromFamilyName("Segoe UI");
+                    var labelWidth = paint.MeasureText(label);
+                    canvas.DrawText(
+                        label,
+                        (float)(key.X + Math.Max(2, (key.Width - labelWidth) / 2)),
+                        (float)(Height - 14),
+                        paint);
+                }
             }
 
             foreach (var key in keys.Where(k => k.IsBlack))

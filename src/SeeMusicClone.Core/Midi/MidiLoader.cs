@@ -1,6 +1,7 @@
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
 using SeeMusicClone.Core.Models;
+using NoteEvent = SeeMusicClone.Core.Models.NoteEvent;
 
 namespace SeeMusicClone.Core.Midi;
 
@@ -24,7 +25,7 @@ public static class MidiLoader
                 continue; // outside 88-key range, ignore for the visualization
 
             var startMetric = note.TimeAs<MetricTimeSpan>(tempoMap);
-            var endMetric = (note.Time + note.Length).TimeAs<MetricTimeSpan>(tempoMap);
+            var endMetric = note.EndTimeAs<MetricTimeSpan>(tempoMap);
 
             var start = startMetric.TotalMicroseconds / 1_000_000.0;
             var end = endMetric.TotalMicroseconds / 1_000_000.0;

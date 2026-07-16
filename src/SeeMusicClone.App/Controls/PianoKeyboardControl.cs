@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 using SeeMusicClone.Core.Models;
@@ -25,12 +26,14 @@ public sealed class PianoKeyboardControl : FrameworkElement
     private static readonly Brush BlackKeyBrush = new SolidColorBrush(Color.FromRgb(20, 20, 20));
     private static readonly Brush WhiteKeyActiveBrush = new SolidColorBrush(Color.FromRgb(120, 200, 255));
     private static readonly Brush BlackKeyActiveBrush = new SolidColorBrush(Color.FromRgb(60, 140, 220));
+    private static readonly Brush LabelBrush = new SolidColorBrush(Color.FromRgb(72, 72, 72));
     private static readonly Pen KeyBorderPen = new(new SolidColorBrush(Color.FromRgb(180, 180, 180)), 1);
 
     static PianoKeyboardControl()
     {
         WhiteKeyBrush.Freeze(); BlackKeyBrush.Freeze();
         WhiteKeyActiveBrush.Freeze(); BlackKeyActiveBrush.Freeze();
+        LabelBrush.Freeze();
         KeyBorderPen.Freeze();
     }
 
@@ -48,6 +51,23 @@ public sealed class PianoKeyboardControl : FrameworkElement
             var brush = active.Contains(key.NoteNumber) ? WhiteKeyActiveBrush : WhiteKeyBrush;
             var rect = new Rect(key.X, 0, key.Width - 1, height);
             dc.DrawRectangle(brush, KeyBorderPen, rect);
+
+            if (key.NoteNumber % 12 == 0 || key.NoteNumber == PianoLayoutHelper.LowestNote)
+            {
+                var text = key.NoteNumber == PianoLayoutHelper.LowestNote
+                    ? "A0"
+                    : $"C{key.NoteNumber / 12 - 1}";
+                var formatted = new FormattedText(
+                    text,
+                    CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"),
+                    11,
+                    LabelBrush,
+                    VisualTreeHelper.GetDpi(this).PixelsPerDip);
+                var x = key.X + Math.Max(2, (key.Width - formatted.Width) / 2);
+                dc.DrawText(formatted, new Point(x, height - formatted.Height - 8));
+            }
         }
 
         foreach (var key in keys.Where(k => k.IsBlack))
