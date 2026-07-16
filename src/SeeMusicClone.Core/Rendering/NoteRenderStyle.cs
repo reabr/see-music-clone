@@ -9,12 +9,7 @@ namespace SeeMusicClone.Core.Rendering;
 /// </summary>
 public static class NoteRenderStyle
 {
-    /// <summary>Notes up to this length render as a normal solid block.</summary>
     public const double MaxHeadSeconds = 1.2;
-
-    /// <summary>Width of the sustain tail, as a fraction of the key width.</summary>
-    public const double TailWidthFraction = 0.34;
-
-    /// <summary>Opacity (0-1) applied to the tail so it visually recedes behind the head.</summary>
-    public const double TailOpacity = 0.55;
+    public const double TailWidthFraction = 0.18;  // was 0.34 — thinner, more clearly secondary
+    public const double TailOpacity = 0.35;         // was 0.55 — recedes further behind the head
 }

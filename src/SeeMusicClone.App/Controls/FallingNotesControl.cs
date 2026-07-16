@@ -72,40 +72,20 @@ public sealed class FallingNotesControl : FrameworkElement
             if (!keyByNote.TryGetValue(note.NoteNumber, out var key)) continue;
 
             var color = Palette[note.Channel % Palette.Length];
-            var headBrush = new SolidColorBrush(color);
+            var noteBrush = new SolidColorBrush(color);
 
-            double headHeightPx = Math.Min(fullHeightPx, NoteRenderStyle.MaxHeadSeconds * NoteSpeed);
-            double headTopY = bottomY - headHeightPx;
+            double noteY = Math.Max(0, topY);
+            double noteHeight = Math.Min(height, bottomY) - noteY;
 
-            if (fullHeightPx > headHeightPx)
+            if (noteHeight > 0)
             {
-                var tailColor = Color.FromArgb((byte)(255 * NoteRenderStyle.TailOpacity), color.R, color.G, color.B);
-                var tailBrush = new SolidColorBrush(tailColor);
-                double tailWidth = Math.Max(1, key.Width * NoteRenderStyle.TailWidthFraction);
-                double tailX = key.X + (key.Width - tailWidth) / 2;
-
-                double tailY = Math.Max(0, topY);
-                double tailHeight = Math.Min(height, headTopY) - tailY;
-
-                if (tailHeight > 0)
-                {
-                    var tailRect = new Rect(tailX, tailY, tailWidth, tailHeight);
-                    dc.DrawRoundedRectangle(tailBrush, null, tailRect, 2, 2);
-                }
-            }
-
-            double headY = Math.Max(0, headTopY);
-            double headHeight = Math.Min(height, bottomY) - headY;
-
-            if (headHeight > 0)
-            {
-                var headRect = new Rect(
+                var noteRect = new Rect(
                     key.X + 1,
-                    headY,
+                    noteY,
                     Math.Max(1, key.Width - 2),
-                    headHeight);
+                    noteHeight);
 
-                dc.DrawRoundedRectangle(headBrush, null, headRect, 3, 3);
+                dc.DrawRoundedRectangle(noteBrush, null, noteRect, 3, 3);
             }
         }
     }
