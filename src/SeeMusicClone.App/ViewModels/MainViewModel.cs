@@ -25,7 +25,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         get => _currentTime;
         private set => SetField(ref _currentTime, value);
     }
-
+    private double _audioOffsetSeconds = 0.0; // negative = notes fall later, positive = notes fall earlier
+    public double AudioOffsetSeconds
+    {
+        get => _audioOffsetSeconds;
+        set => SetField(ref _audioOffsetSeconds, value);
+    }
     private double _noteSpeed = 140; // pixels/second, bound to a slider in the UI
     public double NoteSpeed
     {
@@ -138,7 +143,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void TickUi()
     {
-        CurrentTime = _playback.CurrentTimeSeconds;
+        CurrentTime = _playback.CurrentTimeSeconds + AudioOffsetSeconds;
         TimeAdvanced?.Invoke(this, EventArgs.Empty);
 
         if (Song != null && CurrentTime >= Song.DurationSeconds)
