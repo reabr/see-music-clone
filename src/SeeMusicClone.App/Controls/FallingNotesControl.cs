@@ -77,8 +77,6 @@ public sealed class FallingNotesControl : FrameworkElement
             double headHeightPx = Math.Min(fullHeightPx, NoteRenderStyle.MaxHeadSeconds * NoteSpeed);
             double headTopY = bottomY - headHeightPx;
 
-            // Long note: draw a thin, dimmer sustain tail above the head first (so the head paints over it),
-            // instead of one giant block that would dwarf everything else on screen.
             if (fullHeightPx > headHeightPx)
             {
                 var tailColor = Color.FromArgb((byte)(255 * NoteRenderStyle.TailOpacity), color.R, color.G, color.B);
@@ -86,24 +84,29 @@ public sealed class FallingNotesControl : FrameworkElement
                 double tailWidth = Math.Max(1, key.Width * NoteRenderStyle.TailWidthFraction);
                 double tailX = key.X + (key.Width - tailWidth) / 2;
 
-                var tailRect = new Rect(
-                    tailX,
-                    Math.Max(0, topY),
-                    tailWidth,
-                    Math.Min(height, headTopY) - Math.Max(0, topY));
+                double tailY = Math.Max(0, topY);
+                double tailHeight = Math.Min(height, headTopY) - tailY;
 
-                if (tailRect.Height > 0)
+                if (tailHeight > 0)
+                {
+                    var tailRect = new Rect(tailX, tailY, tailWidth, tailHeight);
                     dc.DrawRoundedRectangle(tailBrush, null, tailRect, 2, 2);
+                }
             }
 
-            var headRect = new Rect(
-                key.X + 1,
-                Math.Max(0, headTopY),
-                Math.Max(1, key.Width - 2),
-                Math.Min(height, bottomY) - Math.Max(0, headTopY));
+            double headY = Math.Max(0, headTopY);
+            double headHeight = Math.Min(height, bottomY) - headY;
 
-            if (headRect.Height > 0)
+            if (headHeight > 0)
+            {
+                var headRect = new Rect(
+                    key.X + 1,
+                    headY,
+                    Math.Max(1, key.Width - 2),
+                    headHeight);
+
                 dc.DrawRoundedRectangle(headBrush, null, headRect, 3, 3);
+            }
         }
     }
 }
