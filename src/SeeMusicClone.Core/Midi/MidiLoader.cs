@@ -20,6 +20,9 @@ public static class MidiLoader
 
         foreach (var note in midiFile.GetNotes())
         {
+            if (note.Channel == 9)
+                continue; // GM percussion channel — note numbers are drum IDs, not pitches
+
             if (note.NoteNumber < PianoLayoutHelper.LowestNote || note.NoteNumber > PianoLayoutHelper.HighestNote)
                 continue; // outside 88-key range, ignore for the visualization
 
