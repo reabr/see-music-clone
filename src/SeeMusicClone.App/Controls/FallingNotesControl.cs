@@ -59,24 +59,22 @@ public sealed class FallingNotesControl : FrameworkElement
 
         var keys = PianoLayout.Compute(width, height);
         var keyByNote = keys.ToDictionary(k => k.NoteNumber);
-        const double glowInflate = 1.0;
-        const double minGapPx = 4.0; // guaranteed visual gap between consecutive notes on the same key
-
+        var nextSameKeyStartTimes = NoteRenderStyle.BuildNextSameKeyStartTimes(Notes);
         foreach (var note in Notes)
         {
             double secondsUntilHit = note.StartTimeSeconds - CurrentTime;
             double bottomY = height - secondsUntilHit * NoteSpeed;
             double fullHeightPx = note.DurationSeconds * NoteSpeed;
             double topY = bottomY - fullHeightPx;
+            topY += NoteRenderStyle.GetSameKeyGapTrim(note, nextSameKeyStartTimes, NoteSpeed, fullHeightPx);
 
             if (bottomY < 0 || topY > height) continue;
             if (!keyByNote.TryGetValue(note.NoteNumber, out var key)) continue;
 
             var baseColor = note.NoteNumber >= HandSplitNoteNumber ? RightHandColor : LeftHandColor;
 
-            // Shrink the bottom edge slightly to guarantee a visible gap before the next note starts
             double noteY = Math.Max(0, topY);
-            double noteBottom = Math.Min(height, bottomY) - minGapPx;
+            double noteBottom = Math.Min(height, bottomY);
             double noteHeight = noteBottom - noteY;
             if (noteHeight <= 0) continue;
 
@@ -87,20 +85,30 @@ public sealed class FallingNotesControl : FrameworkElement
                 StartPoint = new Point(0, 0),
                 EndPoint = new Point(0, 1),
                 GradientStops =
-            {
-                new GradientStop(LightenColor(baseColor, 0.35), 0.0),
-                new GradientStop(baseColor, 0.5),
-                new GradientStop(DarkenColor(baseColor, 0.25), 1.0)
-            }
+        {
+            new GradientStop(LightenColor(baseColor, 0.35), 0.0),
+            new GradientStop(baseColor, 0.5),
+            new GradientStop(DarkenColor(baseColor, 0.25), 1.0)
+        }
             };
 
             dc.DrawRoundedRectangle(
                 new SolidColorBrush(Color.FromArgb(60, baseColor.R, baseColor.G, baseColor.B)),
                 null,
-                Inflate(noteRect, glowInflate),
+                Inflate(noteRect, 1),
                 5, 5);
 
             dc.DrawRoundedRectangle(gradientBrush, null, noteRect, 3, 3);
+
+            // Onset marker: a thin bright line at the exact moment this note starts,
+            // so repeated/rapid notes on the same key are still individually readable
+            // without visually chopping the bar into disconnected capsules.
+            double onsetLineY = noteBottom - 2;
+            if (onsetLineY > noteY)
+            {
+                var onsetPen = new Pen(new SolidColorBrush(LightenColor(baseColor, 0.7)), 1.5);
+                dc.DrawLine(onsetPen, new Point(noteRect.X + 2, onsetLineY), new Point(noteRect.Right - 2, onsetLineY));
+            }
         }
     }
     private static Color LightenColor(Color c, double amount)

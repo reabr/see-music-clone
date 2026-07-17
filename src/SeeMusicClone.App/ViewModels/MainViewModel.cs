@@ -16,20 +16,39 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public MidiSong? Song
     {
         get => _song;
-        private set => SetField(ref _song, value);
+        private set
+        {
+            if (SetField(ref _song, value))
+                OnPropertyChanged(nameof(DurationDisplay));
+        }
     }
 
     private double _currentTime;
     public double CurrentTime
     {
         get => _currentTime;
-        private set => SetField(ref _currentTime, value);
+        private set
+        {
+            if (SetField(ref _currentTime, value))
+            {
+                OnPropertyChanged(nameof(CurrentTimeDisplay));
+                OnPropertyChanged(nameof(VisualTime));
+            }
+        }
     }
-    private double _audioOffsetSeconds = 0.0; // negative = notes fall later, positive = notes fall earlier
+    public string CurrentTimeDisplay => FormatTime(CurrentTime);
+    public string DurationDisplay => FormatTime(Song?.DurationSeconds ?? 0);
+    public double VisualTime => CurrentTime + AudioOffsetSeconds;
+
+    private double _audioOffsetSeconds = -0.12; // negative = notes fall later, positive = notes fall earlier
     public double AudioOffsetSeconds
     {
         get => _audioOffsetSeconds;
-        set => SetField(ref _audioOffsetSeconds, value);
+        set
+        {
+            if (SetField(ref _audioOffsetSeconds, value))
+                OnPropertyChanged(nameof(VisualTime));
+        }
     }
     private double _noteSpeed = 140; // pixels/second, bound to a slider in the UI
     public double NoteSpeed
@@ -53,8 +72,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public bool IsPlaying
     {
         get => _isPlaying;
-        private set => SetField(ref _isPlaying, value);
+        private set
+        {
+            if (SetField(ref _isPlaying, value))
+                OnPropertyChanged(nameof(PlayPauseText));
+        }
     }
+    public string PlayPauseText => IsPlaying ? "Pause" : "Play";
 
     private string _statusText = "Open a MIDI file to begin.";
     public string StatusText
@@ -143,7 +167,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void TickUi()
     {
-        CurrentTime = _playback.CurrentTimeSeconds + AudioOffsetSeconds;
+        CurrentTime = _playback.CurrentTimeSeconds;
         TimeAdvanced?.Invoke(this, EventArgs.Empty);
 
         if (Song != null && CurrentTime >= Song.DurationSeconds)
@@ -164,5 +188,16 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         _uiTimer.Stop();
         _playback.Dispose();
+    }
+
+    private static string FormatTime(double seconds)
+    {
+        if (double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 0)
+            seconds = 0;
+
+        var time = TimeSpan.FromSeconds(seconds);
+        return time.TotalHours >= 1
+            ? $"{(int)time.TotalHours}:{time.Minutes:00}:{time.Seconds:00}"
+            : $"{time.Minutes}:{time.Seconds:00}";
     }
 }

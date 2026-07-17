@@ -39,6 +39,7 @@ public sealed class FrameRenderer
         double fallAreaHeight = Height - KeyboardHeight;
         var keys = PianoLayout.Compute(Width, KeyboardHeight);
         var keyByNote = keys.ToDictionary(k => k.NoteNumber);
+        var nextSameKeyStartTimes = NoteRenderStyle.BuildNextSameKeyStartTimes(notes);
 
         var activeNotes = new HashSet<int>();
 
@@ -51,8 +52,9 @@ public sealed class FrameRenderer
                 double noteBottomY = fallAreaHeight - secondsUntilHit * NoteSpeedPixelsPerSecond;
                 double fullHeightPx = note.DurationSeconds * NoteSpeedPixelsPerSecond;
                 double noteTopY = noteBottomY - fullHeightPx;
+                double visualNoteTopY = noteTopY + NoteRenderStyle.GetSameKeyGapTrim(note, nextSameKeyStartTimes, NoteSpeedPixelsPerSecond, fullHeightPx);
 
-                if (noteBottomY < 0 || noteTopY > fallAreaHeight) continue; // off-screen
+                if (noteBottomY < 0 || visualNoteTopY > fallAreaHeight) continue; // off-screen
                 if (!keyByNote.TryGetValue(note.NoteNumber, out var key)) continue;
 
                 if (timeSeconds >= note.StartTimeSeconds && timeSeconds <= note.EndTimeSeconds)
@@ -61,18 +63,19 @@ public sealed class FrameRenderer
                 var color = NotePalette[note.Channel % NotePalette.Length];
                 double headHeightPx = Math.Min(fullHeightPx, NoteRenderStyle.MaxHeadSeconds * NoteSpeedPixelsPerSecond);
                 double headTopY = noteBottomY - headHeightPx;
+                double visualHeadTopY = Math.Max(headTopY, visualNoteTopY);
 
                 // Long note: thin, dimmer sustain tail above the head, so it doesn't dwarf everything else.
-                if (fullHeightPx > headHeightPx)
+                if (fullHeightPx > headHeightPx && visualNoteTopY < visualHeadTopY)
                 {
                     paint.Color = color.WithAlpha((byte)(255 * NoteRenderStyle.TailOpacity));
                     double tailWidth = Math.Max(1, key.Width * NoteRenderStyle.TailWidthFraction);
                     double tailX = key.X + (key.Width - tailWidth) / 2;
                     var tailRect = new SKRect(
                         (float)tailX,
-                        (float)Math.Max(0, noteTopY),
+                        (float)Math.Max(0, visualNoteTopY),
                         (float)(tailX + tailWidth),
-                        (float)Math.Min(fallAreaHeight, headTopY));
+                        (float)Math.Min(fallAreaHeight, visualHeadTopY));
                     if (tailRect.Height > 0)
                         canvas.DrawRoundRect(tailRect, 2, 2, paint);
                 }
@@ -80,7 +83,7 @@ public sealed class FrameRenderer
                 paint.Color = color;
                 var headRect = new SKRect(
                     (float)(key.X + 1),
-                    (float)Math.Max(0, headTopY),
+                    (float)Math.Max(0, visualHeadTopY),
                     (float)(key.X + key.Width - 1),
                     (float)Math.Min(fallAreaHeight, noteBottomY));
                 if (headRect.Height > 0)
