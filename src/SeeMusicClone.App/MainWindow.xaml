@@ -295,7 +295,11 @@
             <Border Grid.Row="1"
                     Margin="1,0,1,1"
                     Background="#08080A">
-                <controls:PianoKeyboardControl x:Name="Keyboard"/>
+                <controls:PianoKeyboardControl x:Name="Keyboard"
+                                               Notes="{Binding Notes}"
+                                               CurrentTime="{Binding VisualTime}"
+                                               NoteSpeed="{Binding NoteSpeed}"
+                                               FallAreaHeight="{Binding ActualHeight, ElementName=FallingNotes}"/>
             </Border>
         </Grid>
     </DockPanel>

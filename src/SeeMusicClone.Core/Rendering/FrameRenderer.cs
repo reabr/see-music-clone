@@ -40,8 +40,7 @@ public sealed class FrameRenderer
         var keys = PianoLayout.Compute(Width, KeyboardHeight);
         var keyByNote = keys.ToDictionary(k => k.NoteNumber);
         var nextSameKeyStartTimes = NoteRenderStyle.BuildNextSameKeyStartTimes(notes);
-
-        var activeNotes = new HashSet<int>();
+        var activeNotes = ActiveNoteCalculator.GetActiveNotes(notes, timeSeconds, NoteSpeedPixelsPerSecond, fallAreaHeight);
 
         using (var paint = new SKPaint { IsAntialias = true })
         {
@@ -56,9 +55,6 @@ public sealed class FrameRenderer
 
                 if (noteBottomY < 0 || visualNoteTopY > fallAreaHeight) continue; // off-screen
                 if (!keyByNote.TryGetValue(note.NoteNumber, out var key)) continue;
-
-                if (timeSeconds >= note.StartTimeSeconds && timeSeconds <= note.EndTimeSeconds)
-                    activeNotes.Add(note.NoteNumber);
 
                 var color = NotePalette[note.Channel % NotePalette.Length];
                 double headHeightPx = Math.Min(fullHeightPx, NoteRenderStyle.MaxHeadSeconds * NoteSpeedPixelsPerSecond);

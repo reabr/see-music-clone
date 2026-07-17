@@ -11,14 +11,44 @@ namespace SeeMusicClone.App.Controls;
 /// </summary>
 public sealed class PianoKeyboardControl : FrameworkElement
 {
-    public static readonly DependencyProperty ActiveNotesProperty = DependencyProperty.Register(
-        nameof(ActiveNotes), typeof(HashSet<int>), typeof(PianoKeyboardControl),
-        new FrameworkPropertyMetadata(new HashSet<int>(), FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty NotesProperty = DependencyProperty.Register(
+        nameof(Notes), typeof(IReadOnlyList<PianoNote>), typeof(PianoKeyboardControl),
+        new FrameworkPropertyMetadata(Array.Empty<PianoNote>(), FrameworkPropertyMetadataOptions.AffectsRender));
 
-    public HashSet<int> ActiveNotes
+    public static readonly DependencyProperty CurrentTimeProperty = DependencyProperty.Register(
+        nameof(CurrentTime), typeof(double), typeof(PianoKeyboardControl),
+        new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty NoteSpeedProperty = DependencyProperty.Register(
+        nameof(NoteSpeed), typeof(double), typeof(PianoKeyboardControl),
+        new FrameworkPropertyMetadata(140.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty FallAreaHeightProperty = DependencyProperty.Register(
+        nameof(FallAreaHeight), typeof(double), typeof(PianoKeyboardControl),
+        new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public IReadOnlyList<PianoNote> Notes
     {
-        get => (HashSet<int>)GetValue(ActiveNotesProperty);
-        set => SetValue(ActiveNotesProperty, value);
+        get => (IReadOnlyList<PianoNote>)GetValue(NotesProperty);
+        set => SetValue(NotesProperty, value);
+    }
+
+    public double CurrentTime
+    {
+        get => (double)GetValue(CurrentTimeProperty);
+        set => SetValue(CurrentTimeProperty, value);
+    }
+
+    public double NoteSpeed
+    {
+        get => (double)GetValue(NoteSpeedProperty);
+        set => SetValue(NoteSpeedProperty, value);
+    }
+
+    public double FallAreaHeight
+    {
+        get => (double)GetValue(FallAreaHeightProperty);
+        set => SetValue(FallAreaHeightProperty, value);
     }
 
     private static readonly Brush WhiteKeyBrush = new SolidColorBrush(Color.FromRgb(250, 250, 250));
@@ -41,7 +71,7 @@ public sealed class PianoKeyboardControl : FrameworkElement
         if (width <= 0 || height <= 0) return;
 
         var keys = PianoLayout.Compute(width, height);
-        var active = ActiveNotes;
+        var active = ActiveNoteCalculator.GetActiveNotes(Notes, CurrentTime, NoteSpeed, FallAreaHeight);
 
         foreach (var key in keys.Where(k => !k.IsBlack))
         {
@@ -56,17 +86,5 @@ public sealed class PianoKeyboardControl : FrameworkElement
             var rect = new Rect(key.X, 0, key.Width, key.Height);
             dc.DrawRectangle(brush, null, rect);
         }
-    }
-
-    /// <summary>Call from the parent whenever CurrentTime changes to refresh which keys light up.</summary>
-    public void UpdateActiveNotes(IReadOnlyList<PianoNote> notes, double currentTimeSeconds)
-    {
-        var active = new HashSet<int>();
-        foreach (var n in notes)
-        {
-            if (currentTimeSeconds >= n.StartTimeSeconds && currentTimeSeconds <= n.EndTimeSeconds)
-                active.Add(n.NoteNumber);
-        }
-        ActiveNotes = active;
     }
 }
