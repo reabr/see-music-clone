@@ -27,6 +27,10 @@ public sealed class PianoKeyboardControl : FrameworkElement
         nameof(FallAreaHeight), typeof(double), typeof(PianoKeyboardControl),
         new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty DetectedNoteNumberProperty = DependencyProperty.Register(
+        nameof(DetectedNoteNumber), typeof(int?), typeof(PianoKeyboardControl),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public IReadOnlyList<PianoNote> Notes
     {
         get => (IReadOnlyList<PianoNote>)GetValue(NotesProperty);
@@ -51,16 +55,24 @@ public sealed class PianoKeyboardControl : FrameworkElement
         set => SetValue(FallAreaHeightProperty, value);
     }
 
+    public int? DetectedNoteNumber
+    {
+        get => (int?)GetValue(DetectedNoteNumberProperty);
+        set => SetValue(DetectedNoteNumberProperty, value);
+    }
+
     private static readonly Brush WhiteKeyBrush = new SolidColorBrush(Color.FromRgb(250, 250, 250));
     private static readonly Brush BlackKeyBrush = new SolidColorBrush(Color.FromRgb(20, 20, 20));
     private static readonly Brush LeftHandActiveBrush = CreateActiveBrush(NoteColorPalette.HandSplitNoteNumber - 1);
     private static readonly Brush RightHandActiveBrush = CreateActiveBrush(NoteColorPalette.HandSplitNoteNumber);
+    private static readonly Brush DetectedNoteBrush = new SolidColorBrush(Color.FromRgb(255, 214, 102));
     private static readonly Pen KeyBorderPen = new(new SolidColorBrush(Color.FromRgb(180, 180, 180)), 1);
 
     static PianoKeyboardControl()
     {
         WhiteKeyBrush.Freeze(); BlackKeyBrush.Freeze();
         LeftHandActiveBrush.Freeze(); RightHandActiveBrush.Freeze();
+        DetectedNoteBrush.Freeze();
         KeyBorderPen.Freeze();
     }
 
@@ -75,17 +87,28 @@ public sealed class PianoKeyboardControl : FrameworkElement
 
         foreach (var key in keys.Where(k => !k.IsBlack))
         {
-            var brush = active.Contains(key.NoteNumber) ? GetActiveBrush(key.NoteNumber) : WhiteKeyBrush;
+            var brush = GetKeyBrush(key.NoteNumber, active);
             var rect = new Rect(key.X, 0, key.Width - 1, height);
             dc.DrawRectangle(brush, KeyBorderPen, rect);
         }
 
         foreach (var key in keys.Where(k => k.IsBlack))
         {
-            var brush = active.Contains(key.NoteNumber) ? GetActiveBrush(key.NoteNumber) : BlackKeyBrush;
+            var brush = GetKeyBrush(key.NoteNumber, active);
             var rect = new Rect(key.X, 0, key.Width, key.Height);
             dc.DrawRectangle(brush, null, rect);
         }
+    }
+
+    private Brush GetKeyBrush(int noteNumber, IReadOnlySet<int> active)
+    {
+        if (DetectedNoteNumber == noteNumber)
+            return DetectedNoteBrush;
+
+        if (active.Contains(noteNumber))
+            return GetActiveBrush(noteNumber);
+
+        return PianoLayoutHelper.IsBlackKey(noteNumber) ? BlackKeyBrush : WhiteKeyBrush;
     }
 
     private static Brush GetActiveBrush(int noteNumber)

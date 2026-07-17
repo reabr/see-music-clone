@@ -9,4 +9,6 @@ public sealed class MidiSong
     public IReadOnlyList<PianoNote> Notes { get; init; } = Array.Empty<PianoNote>();
 
     public double DurationSeconds { get; init; }
+
+    public SongSourceType SourceType { get; init; } = SongSourceType.Midi;
 }
