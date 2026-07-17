@@ -44,11 +44,6 @@ public sealed class FallingNotesControl : FrameworkElement
         set => SetValue(NoteSpeedProperty, value);
     }
 
-    private static readonly Color RightHandColor = Color.FromRgb(79, 195, 247);   // soft blue
-    private static readonly Color LeftHandColor = Color.FromRgb(255, 138, 101);   // soft coral
-
-    private const int HandSplitNoteNumber = 60; // Middle C (C4)
-
     protected override void OnRender(DrawingContext dc)
     {
         double width = ActualWidth;
@@ -71,7 +66,8 @@ public sealed class FallingNotesControl : FrameworkElement
             if (bottomY < 0 || topY > height) continue;
             if (!keyByNote.TryGetValue(note.NoteNumber, out var key)) continue;
 
-            var baseColor = note.NoteNumber >= HandSplitNoteNumber ? RightHandColor : LeftHandColor;
+            var noteColor = NoteColorPalette.GetRgb(note.NoteNumber);
+            var baseColor = Color.FromRgb(noteColor.R, noteColor.G, noteColor.B);
 
             double noteY = Math.Max(0, topY);
             double noteBottom = Math.Min(height, bottomY);

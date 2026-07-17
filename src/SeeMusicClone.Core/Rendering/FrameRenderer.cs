@@ -13,14 +13,6 @@ public sealed class FrameRenderer
     private static readonly SKColor BackgroundColor = new(18, 18, 24);
     private static readonly SKColor WhiteKeyColor = new(250, 250, 250);
     private static readonly SKColor BlackKeyColor = new(20, 20, 20);
-    private static readonly SKColor WhiteKeyActiveColor = new(120, 200, 255);
-    private static readonly SKColor BlackKeyActiveColor = new(60, 140, 220);
-
-    private static readonly SKColor[] NotePalette =
-    {
-        new(66, 165, 245), new(102, 187, 106), new(255, 167, 38),
-        new(171, 71, 188), new(239, 83, 80), new(38, 198, 218)
-    };
 
     public FrameRenderer(int width, int height)
     {
@@ -56,7 +48,7 @@ public sealed class FrameRenderer
                 if (noteBottomY < 0 || visualNoteTopY > fallAreaHeight) continue; // off-screen
                 if (!keyByNote.TryGetValue(note.NoteNumber, out var key)) continue;
 
-                var color = NotePalette[note.Channel % NotePalette.Length];
+                var color = GetNoteColor(note.NoteNumber);
                 double headHeightPx = Math.Min(fullHeightPx, NoteRenderStyle.MaxHeadSeconds * NoteSpeedPixelsPerSecond);
                 double headTopY = noteBottomY - headHeightPx;
                 double visualHeadTopY = Math.Max(headTopY, visualNoteTopY);
@@ -90,7 +82,7 @@ public sealed class FrameRenderer
             double keyboardTop = fallAreaHeight;
             foreach (var key in keys.Where(k => !k.IsBlack))
             {
-                paint.Color = activeNotes.Contains(key.NoteNumber) ? WhiteKeyActiveColor : WhiteKeyColor;
+                paint.Color = activeNotes.Contains(key.NoteNumber) ? GetNoteColor(key.NoteNumber) : WhiteKeyColor;
                 canvas.DrawRect(new SKRect((float)key.X, (float)keyboardTop, (float)(key.X + key.Width - 1), (float)Height), paint);
 
                 paint.Color = new SKColor(180, 180, 180);
@@ -101,7 +93,7 @@ public sealed class FrameRenderer
 
             foreach (var key in keys.Where(k => k.IsBlack))
             {
-                paint.Color = activeNotes.Contains(key.NoteNumber) ? BlackKeyActiveColor : BlackKeyColor;
+                paint.Color = activeNotes.Contains(key.NoteNumber) ? GetNoteColor(key.NoteNumber) : BlackKeyColor;
                 canvas.DrawRect(new SKRect((float)key.X, (float)keyboardTop, (float)(key.X + key.Width), (float)(keyboardTop + key.Height)), paint);
             }
         }
@@ -112,5 +104,11 @@ public sealed class FrameRenderer
         var bytes = new byte[pixmap.BytesSize];
         System.Runtime.InteropServices.Marshal.Copy(pixmap.GetPixels(), bytes, 0, bytes.Length);
         return bytes;
+    }
+
+    private static SKColor GetNoteColor(int noteNumber)
+    {
+        var color = NoteColorPalette.GetRgb(noteNumber);
+        return new SKColor(color.R, color.G, color.B);
     }
 }

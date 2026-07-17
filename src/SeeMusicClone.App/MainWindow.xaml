@@ -10,6 +10,15 @@
         Background="#0D0D0F"
         FontFamily="Segoe UI">
 
+    <Window.InputBindings>
+        <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenFileCommand}"/>
+        <KeyBinding Key="E" Modifiers="Control" Command="{Binding ExportCurrentCommand}"/>
+        <KeyBinding Key="Space" Command="{Binding PlayPauseCommand}"/>
+        <KeyBinding Key="Escape" Command="{Binding StopCommand}"/>
+        <KeyBinding Key="Left" Modifiers="Control" Command="{Binding SeekBackwardCommand}"/>
+        <KeyBinding Key="Right" Modifiers="Control" Command="{Binding SeekForwardCommand}"/>
+    </Window.InputBindings>
+
     <Window.Resources>
         <SolidColorBrush x:Key="WindowBrush" Color="#0D0D0F"/>
         <SolidColorBrush x:Key="SurfaceBrush" Color="#171618"/>

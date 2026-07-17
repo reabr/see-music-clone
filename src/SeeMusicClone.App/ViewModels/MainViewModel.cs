@@ -88,6 +88,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public RelayCommand OpenFileCommand { get; }
     public RelayCommand PlayPauseCommand { get; }
     public RelayCommand StopCommand { get; }
+    public RelayCommand SeekBackwardCommand { get; }
+    public RelayCommand SeekForwardCommand { get; }
     public RelayCommand ExportCurrentCommand { get; }
     public RelayCommand OpenBatchRenderCommand { get; }
 
@@ -98,6 +100,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         OpenFileCommand = new RelayCommand(_ => OpenFile());
         PlayPauseCommand = new RelayCommand(_ => TogglePlayPause(), _ => Song != null);
         StopCommand = new RelayCommand(_ => StopPlayback(), _ => Song != null);
+        SeekBackwardCommand = new RelayCommand(_ => SeekBy(-5), _ => Song != null);
+        SeekForwardCommand = new RelayCommand(_ => SeekBy(5), _ => Song != null);
         ExportCurrentCommand = new RelayCommand(_ => ExportCurrentVideo(), _ => Song != null && !IsExporting);
         OpenBatchRenderCommand = new RelayCommand(_ => OpenBatchRenderWindow());
 
@@ -266,6 +270,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _playback.CurrentTimeSeconds = clampedSeconds;
         SetCurrentTime(clampedSeconds);
         TimeAdvanced?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void SeekBy(double seconds)
+    {
+        SeekTo(CurrentTime + seconds);
     }
 
     private void SetCurrentTime(double seconds)

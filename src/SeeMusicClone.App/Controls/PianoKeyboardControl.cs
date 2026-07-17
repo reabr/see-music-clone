@@ -53,14 +53,14 @@ public sealed class PianoKeyboardControl : FrameworkElement
 
     private static readonly Brush WhiteKeyBrush = new SolidColorBrush(Color.FromRgb(250, 250, 250));
     private static readonly Brush BlackKeyBrush = new SolidColorBrush(Color.FromRgb(20, 20, 20));
-    private static readonly Brush WhiteKeyActiveBrush = new SolidColorBrush(Color.FromRgb(120, 200, 255));
-    private static readonly Brush BlackKeyActiveBrush = new SolidColorBrush(Color.FromRgb(60, 140, 220));
+    private static readonly Brush LeftHandActiveBrush = CreateActiveBrush(NoteColorPalette.HandSplitNoteNumber - 1);
+    private static readonly Brush RightHandActiveBrush = CreateActiveBrush(NoteColorPalette.HandSplitNoteNumber);
     private static readonly Pen KeyBorderPen = new(new SolidColorBrush(Color.FromRgb(180, 180, 180)), 1);
 
     static PianoKeyboardControl()
     {
         WhiteKeyBrush.Freeze(); BlackKeyBrush.Freeze();
-        WhiteKeyActiveBrush.Freeze(); BlackKeyActiveBrush.Freeze();
+        LeftHandActiveBrush.Freeze(); RightHandActiveBrush.Freeze();
         KeyBorderPen.Freeze();
     }
 
@@ -75,16 +75,29 @@ public sealed class PianoKeyboardControl : FrameworkElement
 
         foreach (var key in keys.Where(k => !k.IsBlack))
         {
-            var brush = active.Contains(key.NoteNumber) ? WhiteKeyActiveBrush : WhiteKeyBrush;
+            var brush = active.Contains(key.NoteNumber) ? GetActiveBrush(key.NoteNumber) : WhiteKeyBrush;
             var rect = new Rect(key.X, 0, key.Width - 1, height);
             dc.DrawRectangle(brush, KeyBorderPen, rect);
         }
 
         foreach (var key in keys.Where(k => k.IsBlack))
         {
-            var brush = active.Contains(key.NoteNumber) ? BlackKeyActiveBrush : BlackKeyBrush;
+            var brush = active.Contains(key.NoteNumber) ? GetActiveBrush(key.NoteNumber) : BlackKeyBrush;
             var rect = new Rect(key.X, 0, key.Width, key.Height);
             dc.DrawRectangle(brush, null, rect);
         }
+    }
+
+    private static Brush GetActiveBrush(int noteNumber)
+    {
+        return noteNumber >= NoteColorPalette.HandSplitNoteNumber
+            ? RightHandActiveBrush
+            : LeftHandActiveBrush;
+    }
+
+    private static SolidColorBrush CreateActiveBrush(int noteNumber)
+    {
+        var color = NoteColorPalette.GetRgb(noteNumber);
+        return new SolidColorBrush(Color.FromRgb(color.R, color.G, color.B));
     }
 }
