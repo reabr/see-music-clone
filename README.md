@@ -1,57 +1,108 @@
-# Falling Notes — Piano Visualizer (Synthesia-style)
+# See Music Clone
 
-A Windows desktop app: falling notes, 88-key keyboard, adjustable note speed,
-and batch rendering of many MIDI files to video.
+A Windows desktop piano-roll visualizer for MIDI files. Load a `.mid` or `.midi`
+file, play it with synchronized falling notes, tune the visual timing, and export
+single files or whole folders as MP4 videos.
 
-## Architecture
+## Features
 
-- **SeeMusicClone.Core** — plain .NET 8 class library, no UI dependency.
-  - `Midi/MidiLoader.cs` — parses `.mid` files with DryWetMidi into flat `NoteEvent`s (absolute seconds).
-  - `Rendering/PianoLayout.cs` — computes x/width for all 88 keys; shared by the live UI and batch renderer so notes always line up with keys exactly.
-  - `Playback/PlaybackController.cs` — wraps DryWetMidi's `Playback`, which has a built-in `Speed` property for real-time-adjustable playback speed (also affects the actual MIDI audio, not just the animation).
-  - `Rendering/FrameRenderer.cs` — headless SkiaSharp renderer that draws one frame (piano + falling notes) to raw pixels, used only for batch video export.
-  - `Batch/BatchRenderer.cs` — loops over every `.mid`/`.midi` file in a folder, renders frames, and pipes them into `ffmpeg` to produce an `.mp4` per file.
+- 88-key piano keyboard with live note highlighting
+- Falling-note visualization synced to MIDI playback
+- Playback controls with seek, stop, and play/pause
+- Adjustable note fall speed
+- Adjustable playback speed from 0.25x to 2x
+- Audio sync offset control for fine-tuning visual alignment
+- Export the current MIDI file to MP4
+- Batch render every MIDI file in a folder
+- Shared layout logic between the live WPF view and the headless video renderer
 
-- **SeeMusicClone.App** — WPF app (net8.0-windows).
-  - `Controls/PianoKeyboardControl.cs` — custom `FrameworkElement`, draws the 88 keys, highlights active notes.
-  - `Controls/FallingNotesControl.cs` — custom `FrameworkElement`, draws falling note rectangles synced to `CurrentTime`, with a `NoteSpeed` property for adjustable fall speed.
-  - `ViewModels/MainViewModel.cs` — open file, play/pause/stop, note-speed slider, playback-speed slider.
-  - `Views/BatchRenderWindow.xaml(.cs)` — pick input/output folders, resolution, fps, note speed, and render every MIDI file in the folder to video with a progress bar.
+## Requirements
 
-Why WPF: best-in-class custom 2D drawing + animation performance on Windows desktop, mature MIDI/audio ecosystem, and no extra runtime dependencies beyond .NET 8 Desktop Runtime.
+- Windows
+- .NET 8 SDK with the Windows desktop workload
+- ffmpeg on `PATH` for video export
 
-## Prerequisites
+Live playback uses the system MIDI output device. On Windows, the built-in
+Microsoft GS Wavetable Synth is usually available without extra setup.
 
-1. **.NET 8 SDK** (with the Desktop Runtime workload) — https://dotnet.microsoft.com/download
-2. **ffmpeg** on your `PATH` (or set `BatchRenderOptions.FfmpegPath` to the full exe path) — only needed for batch video export, not for live playback. https://ffmpeg.org/download.html
-3. A MIDI output device for audio playback. Windows always has the built-in "Microsoft GS Wavetable Synth", so playback works out of the box even without a real synth/soundfont.
+## Getting Started
 
-## Build & run
+From the repository root:
 
-```
-cd SeeMusicClone
+```powershell
 dotnet restore
 dotnet build
 dotnet run --project src/SeeMusicClone.App
 ```
 
-Or just open `SeeMusicClone.sln` in Visual Studio 2022, set `SeeMusicClone.App` as the startup project, and press F5.
+You can also open `see-music-clone.sln` in Visual Studio 2022, set
+`SeeMusicClone.App` as the startup project, and run it with F5.
 
-NuGet packages used (restored automatically):
-- `Melanchall.DryWetMidi` — MIDI parsing + playback + speed control
-- `SkiaSharp` — headless frame rendering for batch export
+## Using The App
 
-> Package versions pinned in the `.csproj` files are what was current at time of writing;
-> if `dotnet restore` complains a version isn't found, bump to whatever's latest on nuget.org.
+1. Click `Open MIDI` and choose a `.mid` or `.midi` file.
+2. Use `Play`, `Pause`, `Stop`, and the seek bar to control playback.
+3. Adjust `Note Speed` to change how quickly notes fall on screen.
+4. Adjust `Playback` to change both audio speed and animation timing.
+5. Adjust `Audio Sync` if the visuals need to lead or lag the audio slightly.
+6. Click `Export Video` to render the loaded file as an MP4.
+7. Click `Batch Render` to export every MIDI file in a folder.
 
-## Using the app
+## Video Export
 
-- **Open MIDI...** loads a file and shows it in the falling-notes view.
-- **Play / Stop**, **Note Speed** slider (pixels/second of fall), **Playback Speed** slider (0.25x–2x, affects both audio and the falling-note animation together, since both are driven by the same DryWetMidi `Playback` clock).
-- **Batch Render...** opens a dialog: pick a folder of MIDI files and an output folder, choose resolution/fps/note speed, and it renders one `.mp4` per file (no audio track — this is a visual export; muxing the original MIDI audio into the video is a good next step if you need that, e.g. render audio via a soundfont synth like `FluidSynth`/`NAudio` alongside the frames and add `-i audio.wav` to the ffmpeg args).
+The renderer sends raw frames to ffmpeg and writes H.264 MP4 files. Exported
+videos are visual-only by default; they do not include an audio track.
 
-## Extending
+For batch export, choose:
 
-- **Soundfont/quality audio**: swap the default GS Wavetable synth for a SoundFont-based synth (e.g. via NAudio + a `.sf2` file) if you want nicer piano tone.
-- **Note labels / hand coloring**: `FrameRenderer`/`FallingNotesControl` color by MIDI channel right now — easy to switch to left/right hand coloring by splitting channels or note ranges.
-- **Audio in exported video**: render a WAV of the MIDI (e.g. with a software synth) and add `-i audio.wav -c:a aac` to the ffmpeg arguments in `BatchRenderer`, muxing it with the video frames.
+- input folder containing `.mid` or `.midi` files
+- output folder for generated `.mp4` files
+- resolution
+- frame rate
+- note speed
+
+If ffmpeg is not on `PATH`, set `BatchRenderOptions.FfmpegPath` to the full path
+of `ffmpeg.exe`.
+
+## Project Structure
+
+```text
+src/
+  SeeMusicClone.App/      WPF desktop application
+  SeeMusicClone.Core/     MIDI loading, playback helpers, rendering, and export
+```
+
+Key files:
+
+- `src/SeeMusicClone.App/MainWindow.xaml` - main playback and visualization UI
+- `src/SeeMusicClone.App/Controls/FallingNotesControl.cs` - live falling notes
+- `src/SeeMusicClone.App/Controls/PianoKeyboardControl.cs` - 88-key keyboard
+- `src/SeeMusicClone.App/ViewModels/MainViewModel.cs` - playback, export, and UI state
+- `src/SeeMusicClone.App/Views/BatchRenderWindow.xaml` - batch export dialog
+- `src/SeeMusicClone.Core/Midi/MidiLoader.cs` - MIDI parsing
+- `src/SeeMusicClone.Core/Playback/PlaybackController.cs` - MIDI playback control
+- `src/SeeMusicClone.Core/Rendering/PianoLayout.cs` - shared key layout
+- `src/SeeMusicClone.Core/Rendering/FrameRenderer.cs` - headless frame renderer
+- `src/SeeMusicClone.Core/Batch/BatchRenderer.cs` - ffmpeg video export pipeline
+
+## Dependencies
+
+- `Melanchall.DryWetMidi` for MIDI parsing and playback
+- `SkiaSharp` for headless frame rendering during export
+- `ffmpeg` for MP4 encoding
+
+NuGet dependencies are restored automatically by `dotnet restore`.
+
+## Troubleshooting
+
+If playback has no sound, check that Windows has an available MIDI output device
+and that system audio is not muted.
+
+If export fails, confirm that `ffmpeg` is installed and available from a terminal:
+
+```powershell
+ffmpeg -version
+```
+
+If restore fails because a package version is unavailable, update the affected
+package version in the relevant `.csproj` file and restore again.

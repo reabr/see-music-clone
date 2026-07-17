@@ -43,8 +43,63 @@ public sealed class BatchRenderer
         }
     }
 
-    private static async Task RenderSingleFileAsync(
+    public Task RenderFileAsync(
         string midiPath,
+        string outputPath,
+        BatchRenderOptions options,
+        IProgress<BatchRenderProgress> progress,
+        CancellationToken cancellationToken = default)
+    {
+        return RenderSingleFileOrThrowAsync(
+            midiPath,
+            outputPath,
+            fileIndex: 0,
+            totalFiles: 1,
+            options,
+            progress,
+            cancellationToken);
+    }
+
+    private static async Task RenderSingleFileOrThrowAsync(
+        string midiPath,
+        string outputPath,
+        int fileIndex,
+        int totalFiles,
+        BatchRenderOptions options,
+        IProgress<BatchRenderProgress> progress,
+        CancellationToken cancellationToken)
+    {
+        var errorMessage = await RenderSingleFileAsync(
+            midiPath,
+            outputPath,
+            fileIndex,
+            totalFiles,
+            options,
+            progress,
+            cancellationToken);
+
+        if (errorMessage != null)
+            throw new InvalidOperationException(errorMessage);
+    }
+
+    private static async Task<string?> RenderSingleFileAsync(
+        string midiPath,
+        int fileIndex,
+        int totalFiles,
+        BatchRenderOptions options,
+        IProgress<BatchRenderProgress> progress,
+        CancellationToken cancellationToken)
+    {
+        string outputPath = Path.Combine(
+            options.OutputFolder,
+            Path.GetFileNameWithoutExtension(midiPath) + ".mp4");
+
+        return await RenderSingleFileAsync(midiPath, outputPath, fileIndex, totalFiles, options, progress, cancellationToken);
+    }
+
+    private static async Task<string?> RenderSingleFileAsync(
+        string midiPath,
+        string outputPath,
         int fileIndex,
         int totalFiles,
         BatchRenderOptions options,
@@ -57,9 +112,9 @@ public sealed class BatchRenderer
             NoteSpeedPixelsPerSecond = options.NoteSpeedPixelsPerSecond
         };
 
-        string outputPath = Path.Combine(
-            options.OutputFolder,
-            Path.GetFileNameWithoutExtension(midiPath) + ".mp4");
+        var outputFolder = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrWhiteSpace(outputFolder))
+            Directory.CreateDirectory(outputFolder);
 
         var ffmpegExe = string.IsNullOrWhiteSpace(options.FfmpegPath) ? "ffmpeg" : options.FfmpegPath;
 
@@ -109,6 +164,7 @@ public sealed class BatchRenderer
         }
 
         await process.WaitForExitAsync(cancellationToken);
+        var errorMessage = process.ExitCode != 0 ? $"ffmpeg exited with code {process.ExitCode}" : null;
 
         progress.Report(new BatchRenderProgress
         {
@@ -117,7 +173,9 @@ public sealed class BatchRenderer
             TotalFiles = totalFiles,
             FractionComplete = 1.0,
             IsFileComplete = true,
-            ErrorMessage = process.ExitCode != 0 ? $"ffmpeg exited with code {process.ExitCode}" : null
+            ErrorMessage = errorMessage
         });
+
+        return errorMessage;
     }
 }

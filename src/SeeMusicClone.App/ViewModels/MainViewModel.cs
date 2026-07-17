@@ -1,6 +1,9 @@
+using System.IO;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using SeeMusicClone.Core.Batch;
 using SeeMusicClone.Core.Midi;
 using SeeMusicClone.Core.Models;
 using SeeMusicClone.Core.Playback;
@@ -27,14 +30,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public double CurrentTime
     {
         get => _currentTime;
-        private set
-        {
-            if (SetField(ref _currentTime, value))
-            {
-                OnPropertyChanged(nameof(CurrentTimeDisplay));
-                OnPropertyChanged(nameof(VisualTime));
-            }
-        }
+        set => SeekTo(value);
     }
     public string CurrentTimeDisplay => FormatTime(CurrentTime);
     public string DurationDisplay => FormatTime(Song?.DurationSeconds ?? 0);
@@ -92,6 +88,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public RelayCommand OpenFileCommand { get; }
     public RelayCommand PlayPauseCommand { get; }
     public RelayCommand StopCommand { get; }
+    public RelayCommand ExportCurrentCommand { get; }
     public RelayCommand OpenBatchRenderCommand { get; }
 
     public event EventHandler? TimeAdvanced;
@@ -101,6 +98,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         OpenFileCommand = new RelayCommand(_ => OpenFile());
         PlayPauseCommand = new RelayCommand(_ => TogglePlayPause(), _ => Song != null);
         StopCommand = new RelayCommand(_ => StopPlayback(), _ => Song != null);
+        ExportCurrentCommand = new RelayCommand(_ => ExportCurrentVideo(), _ => Song != null && !IsExporting);
         OpenBatchRenderCommand = new RelayCommand(_ => OpenBatchRenderWindow());
 
         _uiTimer = new DispatcherTimer(DispatcherPriority.Render)
@@ -126,7 +124,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             Song = MidiLoader.Load(dialog.FileName);
             _playback.Load(dialog.FileName);
             _playback.Speed = PlaybackSpeed;
-            CurrentTime = 0;
+            SetCurrentTime(0);
             StatusText = $"Loaded {Song.FileName} — {Song.Notes.Count} notes, {Song.DurationSeconds:0.0}s";
             OnPropertyChanged(nameof(Notes));
         }
@@ -160,14 +158,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _playback.Stop();
         _uiTimer.Stop();
         IsPlaying = false;
-        CurrentTime = 0;
+        SetCurrentTime(0);
         if (Song != null) _playback.Load(Song.FilePath);
         _playback.Speed = PlaybackSpeed;
     }
 
     private void TickUi()
     {
-        CurrentTime = _playback.CurrentTimeSeconds;
+        SetCurrentTime(_playback.CurrentTimeSeconds);
         TimeAdvanced?.Invoke(this, EventArgs.Empty);
 
         if (Song != null && CurrentTime >= Song.DurationSeconds)
@@ -184,10 +182,99 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         window.ShowDialog();
     }
 
+    private bool _isExporting;
+    private bool IsExporting
+    {
+        get => _isExporting;
+        set
+        {
+            if (SetField(ref _isExporting, value))
+                CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    private async void ExportCurrentVideo()
+    {
+        if (Song == null || IsExporting) return;
+        var songToExport = Song;
+
+        var dialog = new SaveFileDialog
+        {
+            Filter = "MP4 video (*.mp4)|*.mp4|All files (*.*)|*.*",
+            Title = "Export current MIDI as video",
+            FileName = $"{Path.GetFileNameWithoutExtension(songToExport.FileName)}.mp4",
+            DefaultExt = ".mp4",
+            AddExtension = true,
+            OverwritePrompt = true
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        IsExporting = true;
+        StatusText = "Exporting video...";
+
+        var outputFolder = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
+        var options = new BatchRenderOptions
+        {
+            Width = 1920,
+            Height = 1080,
+            Fps = 30,
+            NoteSpeedPixelsPerSecond = NoteSpeed,
+            OutputFolder = outputFolder
+        };
+
+        var progress = new Progress<BatchRenderProgress>(p =>
+        {
+            StatusText = p.ErrorMessage == null
+                ? $"Exporting {p.FileName}: {p.FractionComplete:P0}"
+                : $"Export failed: {p.ErrorMessage}";
+        });
+
+        try
+        {
+            var renderer = new BatchRenderer();
+            await Task.Run(() => renderer.RenderFileAsync(songToExport.FilePath, dialog.FileName, options, progress));
+            StatusText = $"Exported {Path.GetFileName(dialog.FileName)}";
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Export failed.";
+            MessageBox.Show($"Export failed:\n{ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsExporting = false;
+        }
+    }
+
     public void Dispose()
     {
         _uiTimer.Stop();
         _playback.Dispose();
+    }
+
+    private void SeekTo(double seconds)
+    {
+        if (Song == null)
+        {
+            SetCurrentTime(0);
+            return;
+        }
+
+        var clampedSeconds = Math.Clamp(seconds, 0, Song.DurationSeconds);
+        _playback.CurrentTimeSeconds = clampedSeconds;
+        SetCurrentTime(clampedSeconds);
+        TimeAdvanced?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void SetCurrentTime(double seconds)
+    {
+        if (SetField(ref _currentTime, seconds))
+        {
+            OnPropertyChanged(nameof(CurrentTimeDisplay));
+            OnPropertyChanged(nameof(VisualTime));
+        }
     }
 
     private static string FormatTime(double seconds)

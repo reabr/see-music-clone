@@ -147,6 +147,10 @@
                     <Button Content="Open MIDI"
                             Command="{Binding OpenFileCommand}"
                             Margin="0,0,8,0"/>
+                    <Button Content="Export Video"
+                            Command="{Binding ExportCurrentCommand}"
+                            Style="{StaticResource QuietButton}"
+                            Margin="0,0,8,0"/>
                     <Button Content="Batch Render"
                             Command="{Binding OpenBatchRenderCommand}"
                             Style="{StaticResource QuietButton}"/>
@@ -248,7 +252,7 @@
                         x:Name="SeekSlider"
                         Minimum="0"
                         Maximum="{Binding Song.DurationSeconds}"
-                        Value="{Binding CurrentTime, Mode=OneWay}"
+                        Value="{Binding CurrentTime, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                         IsMoveToPointEnabled="True"
                         VerticalAlignment="Center"/>
 
