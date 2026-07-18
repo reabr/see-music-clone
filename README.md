@@ -75,9 +75,13 @@ of `ffmpeg.exe`.
 ## Project Structure
 
 ```text
+Directory.Build.props    shared compiler/analyzer settings
+Directory.Packages.props central NuGet package versions
 src/
   SeeMusicClone.App/      WPF desktop application
   SeeMusicClone.Core/     MIDI loading, playback helpers, rendering, and export
+tests/
+  SeeMusicClone.Core.Tests/ focused unit tests for core audio behavior
 ```
 
 Key files:
